@@ -1,0 +1,7 @@
+twstock
+lxml
+PyMySQL
+cryptography
+DBUtils
+sqlite3
+
