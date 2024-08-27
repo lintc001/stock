@@ -16,8 +16,7 @@ pool = PooledDB(
     database='stock',  # 資料庫名稱
 )
 
-# 使用連接池
-conn = pool.connection()
 
 def getConn():
+    # 使用連接池
     return pool.connection()

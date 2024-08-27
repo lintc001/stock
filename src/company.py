@@ -9,28 +9,33 @@ import csv
 import codecs
 from sqlConn import getConn
 
+# 取得公司資料的網址
 fileUrlDict = {"上市": r"https://mopsfin.twse.com.tw/opendata/t187ap03_L.csv",
                "上櫃": r"https://mopsfin.twse.com.tw/opendata/t187ap03_O.csv"
                }
-
+# 儲存公司資料csv的路徑
 source = r"./resource/company"
+# aa = {"a": {[["出表日期", 0, "source_time"]]}}
+# csv與db的欄位對應
+csvToDbField = {"上市": [["出表日期", 0, "source_time"],
+                         ["公司代號", 1, "stock_code"],
+                         ["公司名稱", 2, "company_name"],
+                         ["公司簡稱", 3, "short_name"],
 
-fileToDbField = {"上市": {"出表日期": 0,  # source_time
-                          "公司代號": 1,  # stock_code
-                          "產業別": 5,  # industry_short_name
-                          "成立日期": 14,  # founding_date
-                          "上市日期": 15,  # ipo_date
+                         ["產業別", 5, "industry_id"],
+                         ["成立日期", 14, "founding_date"],
+                         ["上市日期", 15, "ipo_date"]
+                         ],
+                "上櫃": [["出表日期", 0, "source_time"],
+                         ["公司代號", 1, "stock_code"],
+                         ["公司名稱", 2, "company_name"],
+                         ["公司簡稱", 3, "short_name"],
 
-                          },
-                 "上櫃": {"出表日期": 0,  # source_time
-                          "公司代號": 1,  # stock_code
-                          "產業別": 5,  # industry_short_name
-                          "成立日期": 14,  # founding_date
-                          "上市日期": 15,  # ipo_date
-
-                          }
-
-                 }
+                         ["產業別", 5, "industry_id"],
+                         ["成立日期", 14, "founding_date"],
+                         ["上市日期", 15, "ipo_date"]
+                         ]
+                }
 
 
 def checkFolder():
@@ -61,16 +66,20 @@ def saveFile(respList, fileUrlKey):
             f.write(row)
 
 
-def checkField(fieldsName, fileUrlKey):
+def checkField(csvFieldNames, fileUrlKey):
     """
     檢查取得的資源欄位是否正確
     """
-    fieldMap = fileToDbField[fileUrlKey]
-    for key in fieldMap:
-        if fieldsName[fieldMap[key]] != key:
-            print(f"{fileUrlKey}的資料中，{key}與原本位置({fieldMap[key]})不符(檔案資料為{fieldsName[fieldMap[key]]})")
-            break
-    return False
+    fieldList = csvToDbField[fileUrlKey]
+    for ele in fieldList:
+        csvFieldName = csvFieldNames[ele[1]]
+        if csvFieldName != ele[0]:
+            print(f"{fileUrlKey}的資料中，csv的第({ele[1] + 1})欄應該為{ele[0]}(目前為{csvFieldName})")
+            return False
+    return True
+
+
+["出表日期", 0, "source_time"]
 
 
 def toDict(reader):
@@ -106,29 +115,49 @@ def getCompany():
             # 創建游標
             cursor = conn.cursor()
             # 欄位名稱已讀取過，這邊直接從第2列開始
-            tmpList = []
+            companyList = []
             insertCount = 0
-            csvField = fileToDbField[fileUrlKey]
-            insert_query = "INSERT INTO company (stock_code, stock_channel, company_name) VALUES (%s, %s, %s)"
-            for row in reader:
-                insertCount += 1
-                tmpDict = {}
-                tmpDict["source_time"] = row[0]
-                tmpDict["stock_code"] = row[1]
-                tmpDict["industry_short_name"] = row[5]
-                tmpDict["founding_date"] = row[14]
-                tmpDict["ipo_date"] = row[15]
-                tmpList.index(tmpDict)
-                # if len(tmpList)==1000:
-                    # cursor.
+            '''
+                csvToDbField：{"上市": [["出表日期", 0, "source_time"],
+                         ["公司代號", 1, "stock_code"],
+                         ],
+               
+                }
 
-# cursor.execute(insert_query, (data['name'], data['date_of_birth'], data['profession']))
+                '''
+            csvField = csvToDbField[fileUrlKey]
+            insertQuery = """INSERT INTO company ( stock_code, stock_channel, company_name, short_name, market_id, industry_id
+                                                , founding_date, ipo_date, source_time ) 
+                                VALUES ( %(stock_code)s, %(stock_channel)s, %(company_name)s, %(short_name)s, %(market_id)s
+                                , %(industry_id)s, %(founding_date)s, %(ipo_date)s, %(source_time)s
+                                ) """
+
+            for row in reader:
+
+                dataDist = {}
+                for f in csvField:
+                    dataDist[ f[2] ] = row[ f[1] ]
+                if fileUrlKey == "上市":
+                    dataDist["market_id"] = "sii"
+                elif fileUrlKey == "上市":
+                    dataDist["market_id"] = "otc"
+
+                companyList.append(dataDist)
+                # 使用 executemany 進行批量插入
+            cursor.executemany(insertQuery, companyList)
+            conn.commit()
+
+
 
     except Exception as e:
         print(f"請求出錯:")
         traceback.print_exc()
     finally:
-        cursor.close()
-        conn.close()
+
+        if cursor != None:
+            cursor.close()
+        if conn != None:
+            conn.close()
+
 
 getCompany()
