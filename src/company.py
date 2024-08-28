@@ -1,11 +1,7 @@
 import html
 import math
 
-import twstock
 from urllib.request import urlopen
-import urllib
-import codecs
-import json
 import os
 import traceback
 import csv
@@ -149,7 +145,7 @@ def getCompany():
                         tranStr = datetime.strptime(row[f[1]] + " 00:00:00", "%Y%m%d %H:%M:%S")
                         row[f[1]] = tranStr
 
-                    if (type(row[f[1]]) is str) and ( row[f[1]].find("&#") > -1 ):
+                    if (type(row[f[1]]) is str) and (row[f[1]].find("&#") > -1):
                         row[f[1]] = html.unescape("&#20870;星科技股份有限公司")
 
                     dataDist[f[2]] = row[f[1]]
@@ -180,4 +176,29 @@ def getCompany():
             conn.close()
 
 
-getCompany()
+def listAllCompanyShort():
+    '''
+    取得所有公司的簡要資料
+    :return:
+    '''
+    conn = getConn()
+    # 創建游標
+    cursor = conn.cursor()
+    selectSQL = """
+                SELECT c.id, c.stock_code,c.company_name,c.short_name,c.market_id
+                    , m.name AS market_name ,c.industry_id, i.name AS industry_name
+                FROM company c
+                LEFT JOIN market m ON c.market_id=m.id
+                LEFT JOIN industry i ON c.industry_id=i.id AND m.id=i.market_id
+                """
+    cursor.execute(selectSQL)
+    results = cursor.fetchall()
+    cursor.close()
+    conn.close()
+
+    return results
+
+
+# getCompany()
+
+# print(listAllCompanyShort())
