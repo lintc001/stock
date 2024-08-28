@@ -1,3 +1,5 @@
+import math
+
 import twstock
 from urllib.request import urlopen
 import urllib
@@ -8,6 +10,9 @@ import traceback
 import csv
 import codecs
 from sqlConn import getConn
+from datetime import datetime
+
+from src.utils import datetimeUtil
 
 # 取得公司資料的網址
 fileUrlDict = {"上市": r"https://mopsfin.twse.com.tw/opendata/t187ap03_L.csv",
@@ -79,9 +84,6 @@ def checkField(csvFieldNames, fileUrlKey):
     return True
 
 
-["出表日期", 0, "source_time"]
-
-
 def toDict(reader):
     datList = []
 
@@ -95,6 +97,8 @@ def getCompany():
     """
     global cursor, conn
     try:
+
+        companyList = []
         for fileUrlKey in fileUrlDict:
             print(f"開始取得{fileUrlKey}的公司資料：")
             resp = urlopen(fileUrlDict[fileUrlKey])
@@ -115,7 +119,6 @@ def getCompany():
             # 創建游標
             cursor = conn.cursor()
             # 欄位名稱已讀取過，這邊直接從第2列開始
-            companyList = []
             insertCount = 0
             '''
                 csvToDbField：{"上市": [["出表日期", 0, "source_time"],
@@ -126,30 +129,43 @@ def getCompany():
 
                 '''
             csvField = csvToDbField[fileUrlKey]
-            insertQuery = """INSERT INTO company ( stock_code, stock_channel, company_name, short_name, market_id, industry_id
+            insertQuery = """INSERT INTO company ( stock_code, company_name, short_name, market_id, industry_id
                                                 , founding_date, ipo_date, source_time ) 
-                                VALUES ( %(stock_code)s, %(stock_channel)s, %(company_name)s, %(short_name)s, %(market_id)s
-                                , %(industry_id)s, %(founding_date)s, %(ipo_date)s, %(source_time)s
+                                        VALUES ( %(stock_code)s, %(company_name)s, %(short_name)s, %(market_id)s, %(industry_id)s
+                                                , %(founding_date)s, %(ipo_date)s, %(source_time)s
                                 ) """
 
             for row in reader:
 
                 dataDist = {}
                 for f in csvField:
-                    dataDist[ f[2] ] = row[ f[1] ]
+                    if f[0] == "出表日期":
+                        # print(row[f[1]])
+                        tranStr = datetimeUtil.twToAd(row[f[1]])
+                        tranStr = datetime.strptime(tranStr + " 00:00:00", "%Y%m%d %H:%M:%S")
+                        dataDist[f[2]] = tranStr
+                    elif f[0] in ("成立日期", "上市日期"):
+                        tranStr = datetime.strptime(row[f[1]] + " 00:00:00", "%Y%m%d %H:%M:%S")
+                        dataDist[f[2]] = tranStr
+                    else:
+                        dataDist[f[2]] = row[f[1]]
                 if fileUrlKey == "上市":
                     dataDist["market_id"] = "sii"
-                elif fileUrlKey == "上市":
+                elif fileUrlKey == "上櫃":
                     dataDist["market_id"] = "otc"
 
                 companyList.append(dataDist)
-                # 使用 executemany 進行批量插入
-            cursor.executemany(insertQuery, companyList)
-            conn.commit()
 
+        listCount = math.ceil((len(companyList) / 1000))
 
+        # 包含參數的sql太長會報錯
+        for i in range(listCount):
+            # 使用 executemany 進行批量插入
+            cursor.executemany(insertQuery, companyList[i * 1000:i * 1000 + 1000])
+        conn.commit()
 
     except Exception as e:
+        conn.rollback()
         print(f"請求出錯:")
         traceback.print_exc()
     finally:
