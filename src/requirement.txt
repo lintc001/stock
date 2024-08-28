@@ -3,5 +3,3 @@ lxml
 PyMySQL
 cryptography
 DBUtils
-sqlite3
-
