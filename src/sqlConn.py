@@ -10,10 +10,11 @@ pool = PooledDB(
     mincached=2,
     maxcached=5,
     blocking=True,
-    host='localhost',      # MySQL 伺服器地址
+    host='localhost',  # MySQL 伺服器地址
     user='stock',  # 使用者名稱
     password='1234',  # 密碼
     database='stock',  # 資料庫名稱
+    cursorclass=pymysql.cursors.DictCursor  # 使用 DictCursor
 )
 
 
