@@ -1,3 +1,4 @@
+import html
 import math
 
 import twstock
@@ -112,7 +113,7 @@ def getCompany():
             reader = csv.reader(codecs.iterdecode(respList, 'utf-8-sig'))
             fieldNameList = next(reader, [])
 
-            print(fieldNameList)
+            # print(fieldNameList)
             if not checkField(fieldNameList, fileUrlKey):
                 continue
             conn = getConn()
@@ -134,7 +135,7 @@ def getCompany():
                                         VALUES ( %(stock_code)s, %(company_name)s, %(short_name)s, %(market_id)s, %(industry_id)s
                                                 , %(founding_date)s, %(ipo_date)s, %(source_time)s
                                 ) """
-
+            print(f"{fileUrlKey}整理資料")
             for row in reader:
 
                 dataDist = {}
@@ -143,27 +144,30 @@ def getCompany():
                         # print(row[f[1]])
                         tranStr = datetimeUtil.twToAd(row[f[1]])
                         tranStr = datetime.strptime(tranStr + " 00:00:00", "%Y%m%d %H:%M:%S")
-                        dataDist[f[2]] = tranStr
+                        row[f[1]] = tranStr
                     elif f[0] in ("成立日期", "上市日期"):
                         tranStr = datetime.strptime(row[f[1]] + " 00:00:00", "%Y%m%d %H:%M:%S")
-                        dataDist[f[2]] = tranStr
-                    else:
-                        dataDist[f[2]] = row[f[1]]
+                        row[f[1]] = tranStr
+
+                    if (type(row[f[1]]) is str) and ( row[f[1]].find("&#") > -1 ):
+                        row[f[1]] = html.unescape("&#20870;星科技股份有限公司")
+
+                    dataDist[f[2]] = row[f[1]]
                 if fileUrlKey == "上市":
                     dataDist["market_id"] = "sii"
                 elif fileUrlKey == "上櫃":
                     dataDist["market_id"] = "otc"
 
                 companyList.append(dataDist)
+            print(f"{fileUrlKey}整理資料完成")
 
+        print(f"準備新增到資料庫")
         listCount = math.ceil((len(companyList) / 1000))
-
-        # 包含參數的sql太長會報錯
         for i in range(listCount):
             # 使用 executemany 進行批量插入
             cursor.executemany(insertQuery, companyList[i * 1000:i * 1000 + 1000])
         conn.commit()
-
+        print(f"完成新增")
     except Exception as e:
         conn.rollback()
         print(f"請求出錯:")
