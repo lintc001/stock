@@ -12,3 +12,6 @@ marketList = listAllmarket()
 '''市場類別'''
 
 companyCodeList = [i['stock_code'] for i in companyShortList]
+'''公司的股票代號'''
+companyChannelList = [i+".TW" for i in companyCodeList]
+'''包含國碼的股票代號'''
