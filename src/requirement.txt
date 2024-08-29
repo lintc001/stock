@@ -1,5 +1,5 @@
-twstock
 lxml
 PyMySQL
 cryptography
 DBUtils
+pip install "yfinance[nospam,repair]"
