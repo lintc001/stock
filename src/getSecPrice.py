@@ -29,20 +29,25 @@ import mplfinance as mpf
 source = r"./resource/price"
 yf.set_tz_cache_location(source)
 
-targetTime = datetime.strptime("2024/08/29 13:20:00", "%Y/%m/%d %H:%M:%S")
-
+targetTime = datetime.strptime("2024/08/29 12:30:00", "%Y/%m/%d %H:%M:%S")
+print("targetTime:",targetTime)
 nowtime = datetime.now()
 print(nowtime)
-
-print(" ".join(companyChannelList[0:1]))
-df = yf.download(" ".join(companyChannelList[0:1]) , period="1d", interval="1m", start=targetTime)
+companyChannelStr = " ".join(companyChannelList[0:100])
+print(companyChannelStr)
+print("使用download")
+dtime = datetime.now()
+df = yf.download(companyChannelStr , period="1d", interval="1m", start=targetTime, group_by="ticker", threads=True)
 print(df)
 df.to_csv(source+"/priceDownload2.csv")
+print("使用download所需時間=",(datetime.now()-dtime))
 
-
-ddf = yf.Ticker(" ".join(companyChannelList[0:1]))
-x = ddf.history(period="1d", interval="1m", start=targetTime)
+print("使用history")
+htime = datetime.now()
+ddf = yf.Tickers(companyChannelStr)
+x = ddf.history(period="1d", interval="1m", start=targetTime, group_by="ticker")
 x.to_csv(source+"/priceDownload_history.csv")
+print("使用history所需時間=",(datetime.now()-htime))
 # 檢查數據是否成功下載
 # if df.empty:
 #     print("股票數據下載失敗或沒有數據。")
