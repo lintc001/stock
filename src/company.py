@@ -81,11 +81,6 @@ def checkField(csvFieldNames, fileUrlKey):
     return True
 
 
-def toDict(reader):
-    datList = []
-
-    for row in reader:
-        print(row)
 
 
 def getCompany():
@@ -105,8 +100,11 @@ def getCompany():
 
             respList = resp.readlines()
             # saveFile(respList, fileUrlKey)
-
+            time1 = datetime.now()
             reader = csv.reader(codecs.iterdecode(respList, 'utf-8-sig'))
+            time2 = datetime.now()
+
+            print("轉成csv時間:",(time2-time1).microseconds)
             fieldNameList = next(reader, [])
 
             # print(fieldNameList)
